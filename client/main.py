@@ -36,7 +36,8 @@ def getTemp(senseHat):
     temp = senseHat.temperature
     humid = senseHat.get_temperature_from_humidity()
     pressure = senseHat.get_temperature_from_pressure()
-    return ((temp + humid + pressure) / 3)
+    avg = (temp + humid + pressure) / 3
+    return [temp, humid, pressure, avg]
 
 
 def getPressure(senseHat):
@@ -60,7 +61,10 @@ def main():
         output = {
                 'pm25': AQ[0],
                 'pm10': AQ[1],
-                'tempC': temp,
+                'tempC': temp[0],
+                'tempCPumid': temp[1],
+                'tempCPressure': temp[2],
+                'tempAvg': temp[3],
                 'pressureMb': pressure,
                 'humidityPct': humidity
                 }
