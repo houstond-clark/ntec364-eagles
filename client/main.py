@@ -4,8 +4,9 @@ import json
 import sys
 import signal
 from sense_hat import SenseHat
-from awscrt import io, mqtt, auth
+from awscrt import io, mqtt
 from awsiot import mqtt_connection_builder
+from vcgencmd import Vcgencmd
 
 # IoT Core Stuff
 ENDPOINT = "a1qecpjelyfwp0-ats.iot.us-east-1.amazonaws.com"
@@ -19,8 +20,7 @@ TOPIC = "ntecpi/env"
 senseHat = None
 airSerial = None
 mqtt_connection = None
-
-
+vcgm = Vcgencmd()
 
 # Initial sensor setup, always happens.
 try:
@@ -74,11 +74,14 @@ def getAQ(airSerial):
 
 
 def getTemp(senseHat):
+    cpu_tempc = vcgm.measure_temp()
+    print("temp=", cpu_tempc)
     temp = senseHat.temperature
     humid = senseHat.get_temperature_from_humidity()
     pressure = senseHat.get_temperature_from_pressure()
     avg = (temp + humid + pressure) / 3
-    return [temp, humid, pressure, avg]
+    calibrated = avg - ((cpu_tempc - avg)/5.466)
+    return [temp, humid, pressure, calibrated, avg]
 
 
 def getPressure(senseHat):
@@ -114,7 +117,8 @@ def main():
                     'tempC': temp[0],
                     'tempCPumid': temp[1],
                     'tempCPressure': temp[2],
-                    'tempAvg': temp[3],
+                    'tempAvg': temp[4],
+                    'tempCalibrated': temp[3],
                     'pressureMb': pressure,
                     'humidityPct': humidity
                     }
