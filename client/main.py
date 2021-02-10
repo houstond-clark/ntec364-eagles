@@ -75,7 +75,6 @@ def getAQ(airSerial):
 
 def getTemp(senseHat):
     cpu_tempc = vcgm.measure_temp()
-    print("temp=", cpu_tempc)
     temp = senseHat.temperature
     humid = senseHat.get_temperature_from_humidity()
     pressure = senseHat.get_temperature_from_pressure()
@@ -96,11 +95,13 @@ def sendIt(data):
     message = data
     message["timestamp"] = time.time()
     message["source"] = "ntecpiv1"
-    mqtt_connection.publish(
+    try:
+        mqtt_connection.publish(
             topic=TOPIC,
             payload=json.dumps(message),
             qos=mqtt.QoS.AT_LEAST_ONCE)
-    print("Sent: ", json.dumps(message))
+    except Exception:
+        print("Unable to publish message, message:", json.dumps(message))
 
 
 def main():
@@ -124,7 +125,7 @@ def main():
                     }
             sendIt(output)
             panelDisplay(output)
-            time.sleep(10)
+            time.sleep(30)
         except KeyboardInterrupt:
             print("Manual kill.")
             cleanup()
