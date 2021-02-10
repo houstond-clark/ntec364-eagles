@@ -21,6 +21,14 @@ senseHat = None
 airSerial = None
 mqtt_connection = None
 vcgm = Vcgencmd()
+calibrateTemp = False
+
+# Should we attempt to calibrate our temps?
+try:
+    serialDevice = serial.Serial('/dev/ttyUSB1')
+    calibrateTemp = serialDevice
+except Exception:
+    print("Skipping calibration setup.")
 
 # Initial sensor setup, always happens.
 try:
@@ -73,14 +81,30 @@ def getAQ(airSerial):
     return [pmTwoFive, pmTen]
 
 
+def getCalibrationTemp(calibrateTemp):
+    if calibrateTemp is False:
+        return
+    calibrateTemp.flushInput()
+    line = calibrateTemp.readline()
+    tempobj = json.loads(line)
+    return float(tempobj["degC"])
+
+
 def getTemp(senseHat):
     cpu_tempc = vcgm.measure_temp()
     temp = senseHat.temperature
     humid = senseHat.get_temperature_from_humidity()
     pressure = senseHat.get_temperature_from_pressure()
     avg = (temp + humid + pressure) / 3
+    secondary = False
+
+    try:
+        secondary = getCalibrationTemp(calibrateTemp)
+    except Exception:
+        print("Unable to fetch secondary temperature, skipping")
+
     calibrated = avg - ((cpu_tempc - avg)/5.466)
-    return [temp, humid, pressure, calibrated, avg]
+    return [temp, humid, pressure, calibrated, avg, secondary]
 
 
 def getPressure(senseHat):
@@ -120,6 +144,7 @@ def main():
                     'tempCPressure': temp[2],
                     'tempAvg': temp[4],
                     'tempCalibrated': temp[3],
+                    'tempSecondary': temp[5],
                     'pressureMb': pressure,
                     'humidityPct': humidity
                     }
