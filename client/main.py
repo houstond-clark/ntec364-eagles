@@ -22,14 +22,6 @@ senseHat = None
 airSerial = None
 mqtt_connection = None
 vcgm = Vcgencmd()
-calibrateTemp = False
-
-# Should we attempt to calibrate our temps?
-try:
-    serialDevice = serial.Serial('/dev/ttyUSB1')
-    calibrateTemp = serialDevice
-except Exception:
-    print("Skipping calibration setup.")
 
 # Initial sensor setup, always happens.
 try:
