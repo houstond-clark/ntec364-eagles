@@ -9,11 +9,12 @@ from awsiot import mqtt_connection_builder
 from vcgencmd import Vcgencmd
 
 # IoT Core Stuff
+CERT_ROOT_PATH = "/home/pi/code/ntec364-eagles/client/cert"
 ENDPOINT = "a1qecpjelyfwp0-ats.iot.us-east-1.amazonaws.com"
 CLIENT_ID = "ntecpi"
-PATH_TO_CERT = "/home/pi/code/ntec364-eagles/client/cert/7752c08c83-certificate.pem.crt"
-PATH_TO_KEY = "/home/pi/code/ntec364-eagles/client/cert/7752c08c83-private.pem.key"
-PATH_TO_ROOT = "/home/pi/code/ntec364-eagles/client/cert/AmazonRootCA1.pem"
+PATH_TO_CERT = f"{CERT_ROOT_PATH}/7752c08c83-certificate.pem.crt"
+PATH_TO_KEY = f"{CERT_ROOT_PATH}/7752c08c83-private.pem.key"
+PATH_TO_ROOT = f"{CERT_ROOT_PATH}/AmazonRootCA1.pem"
 TOPIC = "ntecpi/env"
 
 # script stuff
@@ -91,20 +92,14 @@ def getCalibrationTemp(calibrateTemp):
 
 
 def getTemp(senseHat):
+    # Calibration calcuation:
+    #  ((senshat temperature[s]) - (( cpu temperature[c] - sensehat temperature[s])/5.466)) - 16
+    # solved for x: x = -0.182949 c + 1.18295 s - 16
+
     cpu_tempc = vcgm.measure_temp()
     temp = senseHat.temperature
-    humid = senseHat.get_temperature_from_humidity()
-    pressure = senseHat.get_temperature_from_pressure()
-    avg = (temp + humid + pressure) / 3
-    secondary = False
-
-    try:
-        secondary = getCalibrationTemp(calibrateTemp)
-    except Exception:
-        print("Unable to fetch secondary temperature, skipping")
-
-    calibrated = avg - ((cpu_tempc - avg)/5.466)
-    return [temp, humid, pressure, calibrated, avg, secondary]
+    calibrated = -0.182949 * cpu_tempc + 1.18295 * temp - 16
+    return [calibrated, temp, cpu_tempc]
 
 
 def getPressure(senseHat):
@@ -140,11 +135,8 @@ def main():
                     'pm25': AQ[0],
                     'pm10': AQ[1],
                     'tempC': temp[0],
-                    'tempCPumid': temp[1],
-                    'tempCPressure': temp[2],
-                    'tempAvg': temp[4],
-                    'tempCalibrated': temp[3],
-                    'tempSecondary': temp[5],
+                    'tempRaw': temp[1],
+                    'tempCPU': temp[2],
                     'pressureMb': pressure,
                     'humidityPct': humidity
                     }
@@ -218,21 +210,21 @@ def panelDisplay(data):
         senseHat.set_pixel(0, 3, (87, 221, 47))
 
     # SenseHat goes from -40C - 120C
-    if data["tempAvg"] > -20:
+    if data["tempC"] > -20:
         senseHat.set_pixel(0, 4, (0, 0, 255))
-    if data["tempAvg"] > -10:
+    if data["tempC"] > -10:
         senseHat.set_pixel(1, 4, (0, 64, 128))
-    if data["tempAvg"] > 0:
+    if data["tempC"] > 0:
         senseHat.set_pixel(2, 4, (0, 128, 64))
-    if data["tempAvg"] > 20:
+    if data["tempC"] > 20:
         senseHat.set_pixel(3, 4, (0, 255, 0))
-    if data["tempAvg"] > 40:
+    if data["tempC"] > 40:
         senseHat.set_pixel(4, 4, (0, 255, 0))
-    if data["tempAvg"] > 60:
+    if data["tempC"] > 60:
         senseHat.set_pixel(5, 4, (64, 128, 0))
-    if data["tempAvg"] > 80:
+    if data["tempC"] > 80:
         senseHat.set_pixel(6, 4, (128, 64, 0))
-    if data["tempAvg"] > 100:
+    if data["tempC"] > 100:
         senseHat.set_pixel(7, 4, (255, 0, 0))
 
 
